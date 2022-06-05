@@ -3,10 +3,16 @@
 #include <string>
 #include <vector>
 
-#define VK_Z_KEY 0x5A
-// These keys are used to send windows to tray
-#define TRAY_KEY VK_Z_KEY
-#define MOD_KEY MOD_WIN + MOD_SHIFT
+#define TILDE 0xC0	
+#define SINGLEQUOTE 0xDE
+#define MOD_KEY MOD_WIN
+
+// Move to tray, should be Windows + `
+#define TRAY_KEY TILDE
+#define TRAY_KEY_ID 0
+// Restore all, Should be Windows + '
+#define RESTORE_KEY SINGLEQUOTE
+#define RESTORE_KEY_ID 1
 
 #define WM_ICON 0x1C0A
 #define WM_OURICON 0x1C0B
@@ -279,8 +285,13 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
       }
     }
     break;
-  case WM_HOTKEY: // We only have one hotkey, so no need to check the message
-    minimizeToTray(context, NULL);
+  case WM_HOTKEY:
+    if (wParam == RESTORE_KEY_ID) {
+        showAllWindows(context);
+    }
+    else if (wParam == TRAY_KEY_ID) {
+        minimizeToTray(context, NULL);
+    }
     break;
   default:
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
@@ -329,9 +340,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   // Store our context in main window for retrieval by WindowProc
   SetWindowLongPtr(context.mainWindow, GWLP_USERDATA, reinterpret_cast<LONG>(&context));
 
-  if (!RegisterHotKey(context.mainWindow, 0, MOD_KEY | MOD_NOREPEAT, TRAY_KEY)) {
-    MessageBox(NULL, "Error! Could not register the hotkey.", "Traymond", MB_OK | MB_ICONERROR);
+  if (!RegisterHotKey(context.mainWindow, TRAY_KEY_ID, MOD_KEY | MOD_NOREPEAT, TRAY_KEY)) {
+    MessageBox(NULL, "Error! Could not register tray hotkey.", "Traymond", MB_OK | MB_ICONERROR);
     return 1;
+  }
+  if (!RegisterHotKey(context.mainWindow, RESTORE_KEY_ID, MOD_KEY | MOD_NOREPEAT, RESTORE_KEY)) {
+      MessageBox(NULL, "Error! Could not register restore hotkey.", "Traymond", MB_OK | MB_ICONERROR);
+      return 1;
   }
 
   createTrayIcon(context.mainWindow, hInstance, &icon);
